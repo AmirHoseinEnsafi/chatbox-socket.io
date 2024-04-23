@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Socket.io Chat</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f8f9fa;
+        }
+        #chatContainer {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #fff;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        #messages {
+            padding: 10px;
+            background-color: #f9f9f9;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            height: 300px;
+            overflow-y: scroll;
+            margin-bottom: 10px;
+        }
+        .input-container {
+            margin-bottom: 10px;
+        }
+        input[type="text"], button {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        input[type="text"] {
+            width: calc(100% - 80px);
+        }
+        button {
+            width: 80px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div id="chatContainer">
+        <!-- Display Socket ID for testing -->
+        <div>Socket ID: <span id="socketId"></span></div>
+
+        <!-- Container for messages -->
+        <div id="messages">Messages:</div>
+
+        <!-- Input for message -->
+        <div class="input-container">
+            <input type="text" id="messageInput" placeholder="Type a message...">
+            <button id="sendButton">Send</button>
+        </div>
+        
+        <!-- Input for receiver ID -->
+        <div class="input-container">
+            <input type="text" id="receiverId" placeholder="Receiver ID (optional)">
+        </div>
+
+        <!-- Input for room name -->
+        <div class="input-container">
+            <input type="text" id="roomInput" placeholder="Room Name (optional)">
+        </div>
+
+        <!-- Join and Leave Room buttons -->
+        <div class="input-container">
+            <input type="text" id="joinRoomInput" placeholder="Room to Join">
+            <button id="joinRoomButton">Join Room</button>
+            <input type="text" id="leaveRoomInput" placeholder="Room to Leave">
+            <button id="leaveRoomButton">Leave Room</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.1.3/socket.io.min.js"></script>
+    <script>
+        const socket = io();
+
+        // Function to append a new message to the messages container
+        function appendMessage(message) {
+            const messagesElement = document.getElementById('messages');
+            messagesElement.innerHTML += `<p>${message}</p>`;
+            // Scroll to bottom
+            messagesElement.scrollTop = messagesElement.scrollHeight;
+        }
+
+        // When the client is connected, display Socket ID
+        socket.on('connect', () => {
+            document.getElementById('socketId').textContent = socket.id;
+        });
+
+        // When the "Send" button is clicked, emit a 'message' event
+        document.getElementById('sendButton').addEventListener('click', () => {
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value.trim();
+            const receiverId = document.getElementById('receiverId').value.trim();
+            const roomName = document.getElementById('roomInput').value.trim();
+
+            // Send private message if receiver ID is provided
+            if (receiverId !== '') {
+                socket.emit('message', { mss: message, id: receiverId });
+            } else if (roomName !== '') {
+                socket.emit('message', { mss: message, room: roomName });
+            } else {
+                socket.emit('message', { mss: message }); // Broadcast message to everyone
+            }
+            messageInput.value = ''; // Clear input after sending
+        });
+
+        // Listen for 'message' events from the server
+        socket.on('message', (data) => {
+            appendMessage(data);
+        });
+
+        // Listen for 'disconnect' events from the server
+        socket.on('disconnect', () => {
+            const messagesElement = document.getElementById('messages');
+            messagesElement.innerHTML += `<p style="color: red;">Disconnected from server</p>`;
+        });
+
+        // Optional: Handle disconnecting from server when the window/tab is closed
+        window.addEventListener('beforeunload', () => {
+            socket.disconnect();
+        });
+
+        // Join a room
+        document.getElementById('joinRoomButton').addEventListener('click', () => {
+            const roomInput = document.getElementById('joinRoomInput');
+            const roomName = roomInput.value.trim();
+            if (roomName !== '') {
+                socket.emit('join-room', roomName);
+                roomInput.value = ''; // Clear input after joining
+            }
+        });
+
+        // Leave a room
+        document.getElementById('leaveRoomButton').addEventListener('click', () => {
+            const roomInput = document.getElementById('leaveRoomInput');
+            const roomName = roomInput.value.trim();
+            if (roomName !== '') {
+                socket.emit('leave-room', roomName);
+                roomInput.value = ''; // Clear input after leaving
+            }
+        });
+    </script>
+</body>
+</html>
